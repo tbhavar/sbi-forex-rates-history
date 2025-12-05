@@ -7,7 +7,6 @@ on:
   # Allows manual triggering from the GitHub UI
   workflow_dispatch:
 
-# Grant necessary permissions for the workflow to commit and push changes
 permissions:
   contents: write
 
@@ -18,7 +17,7 @@ jobs:
       - name: 📝 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: ⬇️ Download SBI Forex Rates PDF (Spoofing Browser)
+      - name: ⬇️ Download SBI Forex Rates PDF (Advanced Spoofing)
         id: download
         run: |
           # --- Logic for Folder Structure and Filename ---
@@ -28,17 +27,27 @@ jobs:
           OUTPUT_FILE="$OUTPUT_DIR/$FILENAME"
           PDF_URL="https://www.sbi.co.in/documents/16012/1400784/FOREX_CARD_RATES.pdf"
           
-          # Define a common browser User-Agent string
+          # Define Headers for advanced browser simulation
           USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
+          ACCEPT_HEADER="text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
           
           # Create the necessary subdirectories (Year folder)
           mkdir -p $OUTPUT_DIR
           
           echo "Attempting to download from $PDF_URL to $OUTPUT_FILE"
           
-          # 🚀 FIX: Add the -A (User-Agent) flag to pretend to be a browser.
-          # We also add --insecure back, just in case the SSL error (60) reappears after the 403 (22) is fixed.
-          curl -L --fail --insecure -A "$USER_AGENT" --output $OUTPUT_FILE $PDF_URL
+          # 🚀 FINAL FIX: Use --cookie-jar and --cookie to handle cookies.
+          # -c/--cookie-jar: Saves any cookies received to this file.
+          # -b/--cookie: Sends cookies read from this file.
+          # This simulates a browser session that receives, saves, and sends cookies.
+          curl -L --fail \
+               --insecure \
+               -A "$USER_AGENT" \
+               -H "Accept: $ACCEPT_HEADER" \
+               -c /tmp/cookies.txt \
+               -b /tmp/cookies.txt \
+               --output $OUTPUT_FILE \
+               $PDF_URL
 
           # Check if the download file size is reasonable (e.g., > 1000 bytes)
           SIZE=$(stat -c%s "$OUTPUT_FILE")
