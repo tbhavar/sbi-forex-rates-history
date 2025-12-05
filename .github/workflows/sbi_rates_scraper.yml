@@ -16,8 +16,15 @@ jobs:
     steps:
       - name: 📝 Checkout Repository
         uses: actions/checkout@v4
+      
+      # We re-include the certificate update step as it is good practice, 
+      # but the main fix is the URL change.
+      - name: 🔐 Update SSL Certificates
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates
 
-      - name: ⬇️ Download SBI Forex Rates PDF (Advanced Spoofing)
+      - name: ⬇️ Download SBI Forex Rates PDF (Correct URL)
         id: download
         run: |
           # --- Logic for Folder Structure and Filename ---
@@ -25,29 +32,20 @@ jobs:
           FILENAME=$(date '+%d-%m-%Y-%H-%M').pdf
           OUTPUT_DIR="./sbi-tt-rates-historical/$CURRENT_YEAR"
           OUTPUT_FILE="$OUTPUT_DIR/$FILENAME"
-          PDF_URL="https://www.sbi.co.in/documents/16012/1400784/FOREX_CARD_RATES.pdf"
           
-          # Define Headers for advanced browser simulation
+          # 🟢 CRITICAL FIX: The corrected URL is used here.
+          PDF_URL="https://sbi.bank.in/documents/16012/1400784/FOREX_CARD_RATES.pdf"
+          
+          # Define a common browser User-Agent string to avoid basic blocks
           USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
-          ACCEPT_HEADER="text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
           
           # Create the necessary subdirectories (Year folder)
           mkdir -p $OUTPUT_DIR
           
           echo "Attempting to download from $PDF_URL to $OUTPUT_FILE"
           
-          # 🚀 FINAL FIX: Use --cookie-jar and --cookie to handle cookies.
-          # -c/--cookie-jar: Saves any cookies received to this file.
-          # -b/--cookie: Sends cookies read from this file.
-          # This simulates a browser session that receives, saves, and sends cookies.
-          curl -L --fail \
-               --insecure \
-               -A "$USER_AGENT" \
-               -H "Accept: $ACCEPT_HEADER" \
-               -c /tmp/cookies.txt \
-               -b /tmp/cookies.txt \
-               --output $OUTPUT_FILE \
-               $PDF_URL
+          # Use standard curl: -L (follow redirects), --fail (exit on HTTP error), -A (User Agent)
+          curl -L --fail -A "$USER_AGENT" --output $OUTPUT_FILE $PDF_URL
 
           # Check if the download file size is reasonable (e.g., > 1000 bytes)
           SIZE=$(stat -c%s "$OUTPUT_FILE")
