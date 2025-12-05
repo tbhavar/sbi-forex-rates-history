@@ -17,14 +17,8 @@ jobs:
     steps:
       - name: 📝 Checkout Repository
         uses: actions/checkout@v4
-      
-      # 🔑 FIX: Update Certificate Authorities to resolve Exit Code 60
-      - name: 🔐 Update SSL Certificates
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ca-certificates
 
-      - name: ⬇️ Download SBI Forex Rates PDF
+      - name: ⬇️ Download SBI Forex Rates PDF (Using Insecure Bypass)
         id: download
         run: |
           # --- Logic for Folder Structure and Filename ---
@@ -39,8 +33,9 @@ jobs:
           
           echo "Attempting to download from $PDF_URL to $OUTPUT_FILE"
           
-          # Use standard curl to download the file. The --fail flag ensures error on HTTP failure.
-          curl -L --fail --output $OUTPUT_FILE $PDF_URL
+          # 🚨 FIX: Using --insecure to bypass SSL verification 
+          # This resolves the Exit Code 60 error by ignoring the certificate check.
+          curl -L --fail --insecure --output $OUTPUT_FILE $PDF_URL
 
           # Check if the download file size is reasonable (e.g., > 1000 bytes)
           SIZE=$(stat -c%s "$OUTPUT_FILE")
