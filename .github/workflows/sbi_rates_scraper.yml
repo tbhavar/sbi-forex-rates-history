@@ -14,11 +14,11 @@ permissions:
 jobs:
   scrape_and_commit:
     runs-on: ubuntu-latest
-steps:
+    steps:
       - name: 📝 Checkout Repository
         uses: actions/checkout@v4
-
-      # ➡️ ADD THIS NEW STEP
+      
+      # 🔑 FIX: Update Certificate Authorities to resolve Exit Code 60
       - name: 🔐 Update SSL Certificates
         run: |
           sudo apt-get update
@@ -28,21 +28,10 @@ steps:
         id: download
         run: |
           # --- Logic for Folder Structure and Filename ---
-          
-          # 1. Define the current Year for subfolder creation (YYYY)
           CURRENT_YEAR=$(date '+%Y')
-          
-          # 2. Define the date-first filename format (DD-MM-YYYY-HH-MM.pdf)
           FILENAME=$(date '+%d-%m-%Y-%H-%M').pdf
-          
-          # 3. Define the dynamic output directory with the Year subfolder
           OUTPUT_DIR="./sbi-tt-rates-historical/$CURRENT_YEAR"
-          
-          # 4. Define the final output path
           OUTPUT_FILE="$OUTPUT_DIR/$FILENAME"
-          
-          # --- Script Execution ---
-          
           PDF_URL="https://www.sbi.co.in/documents/16012/1400784/FOREX_CARD_RATES.pdf"
           
           # Create the necessary subdirectories (Year folder)
@@ -58,29 +47,22 @@ steps:
           if [ "$SIZE" -lt 1000 ]; then
               echo "Error: Downloaded file size is suspiciously small ($SIZE bytes). Deleting file."
               rm $OUTPUT_FILE
-              exit 1 # Fail the job if the download is bad
+              exit 1
           else
               echo "Download successful. File size: $SIZE bytes."
           fi
 
       - name: 💾 Configure Git and Commit Changes
-        # This step handles git configuration, staging, and pushing
         run: |
-          # Configure the commit author for the automated commit
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions Bot"
           
-          # Stage all changes in the tracking directory
           git add sbi-tt-rates-historical
           
-          # Check if there are any new files or changes to commit
           if git diff --cached --exit-code; then
               echo "No new rates to commit. Nothing to do."
           else
-              # If there are changes, commit them
               git commit -m "Automated: New SBI Forex Rates for $(date '+%Y-%m-%d')"
-              
-              # Push the committed changes back to the repository
               git push
               echo "Successfully committed and pushed new rate file."
           fi
