@@ -14,10 +14,15 @@ permissions:
 jobs:
   scrape_and_commit:
     runs-on: ubuntu-latest
-    steps:
+steps:
       - name: 📝 Checkout Repository
-        # Action to pull the repository contents onto the runner machine
         uses: actions/checkout@v4
+
+      # ➡️ ADD THIS NEW STEP
+      - name: 🔐 Update SSL Certificates
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates
 
       - name: ⬇️ Download SBI Forex Rates PDF
         id: download
