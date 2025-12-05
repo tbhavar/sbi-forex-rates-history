@@ -1,10 +1,8 @@
 name: Daily SBI Rate Scraper
 
 on:
-  # Automated schedule: Runs daily at 10:00 AM UTC
   schedule:
     - cron: '0 10 * * *'
-  # Allows manual triggering from the GitHub UI
   workflow_dispatch:
 
 permissions:
@@ -17,8 +15,6 @@ jobs:
       - name: 📝 Checkout Repository
         uses: actions/checkout@v4
       
-      # We re-include the certificate update step as it is good practice, 
-      # but the main fix is the URL change.
       - name: 🔐 Update SSL Certificates
         run: |
           sudo apt-get update
@@ -32,22 +28,14 @@ jobs:
           FILENAME=$(date '+%d-%m-%Y-%H-%M').pdf
           OUTPUT_DIR="./sbi-tt-rates-historical/$CURRENT_YEAR"
           OUTPUT_FILE="$OUTPUT_DIR/$FILENAME"
-          
-          # 🟢 CRITICAL FIX: The corrected URL is used here.
           PDF_URL="https://sbi.bank.in/documents/16012/1400784/FOREX_CARD_RATES.pdf"
-          
-          # Define a common browser User-Agent string to avoid basic blocks
           USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
           
-          # Create the necessary subdirectories (Year folder)
           mkdir -p $OUTPUT_DIR
-          
           echo "Attempting to download from $PDF_URL to $OUTPUT_FILE"
           
-          # Use standard curl: -L (follow redirects), --fail (exit on HTTP error), -A (User Agent)
           curl -L --fail -A "$USER_AGENT" --output $OUTPUT_FILE $PDF_URL
 
-          # Check if the download file size is reasonable (e.g., > 1000 bytes)
           SIZE=$(stat -c%s "$OUTPUT_FILE")
           if [ "$SIZE" -lt 1000 ]; then
               echo "Error: Downloaded file size is suspiciously small ($SIZE bytes). Deleting file."
@@ -71,3 +59,33 @@ jobs:
               git push
               echo "Successfully committed and pushed new rate file."
           fi
+
+  notification:
+    # ⚠️ This job will ONLY run if the previous job ('scrape_and_commit') fails
+    needs: scrape_and_commit
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📧 Send Email Notification on Failure
+        uses: dawidd6/action-send-mail@v3
+        with:
+          # Configuration for sending mail via Gmail
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          # 🚨 IMPORTANT: Replace YOUR_GMAIL_USERNAME with your actual Gmail address (catanmaybhavar@gmail.com)
+          username: catanmaybhavar@gmail.com
+          # 🚨 IMPORTANT: This password MUST be stored as a SECRET in GitHub (see Step 2)
+          password: ${{ secrets.MAIL_PASSWORD }}
+          
+          subject: '[FAILURE ALERT] SBI Forex Scraper Action Failed'
+          # Send the email to your address
+          to: catanmaybhavar@gmail.com
+          # The body includes the repository and run URL for easy debugging
+          body: |
+            The Daily SBI Forex Rate Scraper failed to execute or commit the PDF.
+            
+            Repository: ${{ github.repository }}
+            Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            Please check the GitHub Actions logs for details on Exit Code 22 or 60.
