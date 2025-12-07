@@ -2,7 +2,8 @@ name: Daily SBI Rate Scraper
 
 on:
   schedule:
-    - cron: '0 10 * * *'
+    # Runs at 9:30 AM UTC, which is 3:00 PM IST (GMT+5:30)
+    - cron: '30 9 * * *'
   workflow_dispatch:
 
 permissions:
@@ -20,21 +21,29 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ca-certificates
 
-      - name: ⬇️ Download SBI Forex Rates PDF (Correct URL)
+      - name: ⬇️ Download SBI Forex Rates PDF (Fortified Request)
         id: download
         run: |
           # --- Logic for Folder Structure and Filename ---
           CURRENT_YEAR=$(date '+%Y')
+          # Note: The date format here records the time the file was created on the runner (UTC)
           FILENAME=$(date '+%d-%m-%Y-%H-%M').pdf
           OUTPUT_DIR="./sbi-tt-rates-historical/$CURRENT_YEAR"
           OUTPUT_FILE="$OUTPUT_DIR/$FILENAME"
+          
           PDF_URL="https://sbi.bank.in/documents/16012/1400784/FOREX_CARD_RATES.pdf"
           USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
+          # CRITICAL ADDITION: Use the main SBI website as the referer to prevent 246 byte errors.
+          REFERER_URL="https://www.sbi.co.in/" 
           
           mkdir -p $OUTPUT_DIR
           echo "Attempting to download from $PDF_URL to $OUTPUT_FILE"
           
-          curl -L --fail -A "$USER_AGENT" --output $OUTPUT_FILE $PDF_URL
+          # MODIFIED CURL COMMAND: Added Referer and Accept-Language headers
+          curl -L --fail -A "$USER_AGENT" \
+               -H "Referer: $REFERER_URL" \
+               -H "Accept-Language: en-US,en;q=0.9" \
+               --output $OUTPUT_FILE $PDF_URL
 
           SIZE=$(stat -c%s "$OUTPUT_FILE")
           if [ "$SIZE" -lt 1000 ]; then
@@ -58,7 +67,6 @@ jobs:
               git commit -m "Automated: New SBI Forex Rates for $(date '+%Y-%m-%d')"
               git push
               echo "Successfully committed and pushed new rate file."
-          fi
 
   notification:
     # ⚠️ This job will ONLY run if the previous job ('scrape_and_commit') fails
