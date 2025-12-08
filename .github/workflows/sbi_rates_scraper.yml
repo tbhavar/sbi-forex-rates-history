@@ -3,7 +3,7 @@ name: Daily SBI Rate Scraper
 on:
   schedule:
     # Runs at 9:30 AM UTC, which is 3:00 PM IST (GMT+5:30)
-    - cron: '30 9 * * *'
+    - cron: '30 9 * * *' 
   workflow_dispatch:
 
 permissions:
@@ -26,20 +26,19 @@ jobs:
         run: |
           # --- Logic for Folder Structure and Filename ---
           CURRENT_YEAR=$(date '+%Y')
-          # Note: The date format here records the time the file was created on the runner (UTC)
           FILENAME=$(date '+%d-%m-%Y-%H-%M').pdf
           OUTPUT_DIR="./sbi-tt-rates-historical/$CURRENT_YEAR"
           OUTPUT_FILE="$OUTPUT_DIR/$FILENAME"
           
           PDF_URL="https://sbi.bank.in/documents/16012/1400784/FOREX_CARD_RATES.pdf"
           USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
-          # CRITICAL ADDITION: Use the main SBI website as the referer to prevent 246 byte errors.
+          # CRITICAL: Added Referer and Accept-Language headers for reliable download
           REFERER_URL="https://www.sbi.co.in/" 
           
           mkdir -p $OUTPUT_DIR
           echo "Attempting to download from $PDF_URL to $OUTPUT_FILE"
           
-          # MODIFIED CURL COMMAND: Added Referer and Accept-Language headers
+          # MODIFIED CURL COMMAND
           curl -L --fail -A "$USER_AGENT" \
                -H "Referer: $REFERER_URL" \
                -H "Accept-Language: en-US,en;q=0.9" \
@@ -67,6 +66,7 @@ jobs:
               git commit -m "Automated: New SBI Forex Rates for $(date '+%Y-%m-%d')"
               git push
               echo "Successfully committed and pushed new rate file."
+          fi # <-- FIXED: Added missing 'fi' to close the if statement
 
   notification:
     # ⚠️ This job will ONLY run if the previous job ('scrape_and_commit') fails
@@ -81,9 +81,9 @@ jobs:
           server_address: smtp.gmail.com
           server_port: 465
           secure: true
-          # 🚨 IMPORTANT: Replace YOUR_GMAIL_USERNAME with your actual Gmail address (catanmaybhavar@gmail.com)
+          # 🚨 IMPORTANT: Use your actual Gmail address
           username: catanmaybhavar@gmail.com
-          # 🚨 IMPORTANT: This password MUST be stored as a SECRET in GitHub (see Step 2)
+          # 🚨 IMPORTANT: This password MUST be stored as a SECRET in GitHub
           password: ${{ secrets.MAIL_PASSWORD }}
           
           subject: '[FAILURE ALERT] SBI Forex Scraper Action Failed'
